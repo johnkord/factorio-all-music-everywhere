@@ -5,4 +5,5 @@ zip -r "${mod_name}_${mod_version}.zip" . \
   -x "*build.sh" \
   -x "*.git*" \
   -x "*.DS_Store" \
-  -x "reference*"
+  -x "reference*" \
+  -x "publish.py"
