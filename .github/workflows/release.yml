@@ -1,0 +1,83 @@
+---
+name: Build and Release Mod
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on any tag that starts with v (e.g., v0.1.0)
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build_and_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Build mod
+        run: bash build.sh
+
+      - name: Get mod info
+        id: mod_info
+        run: |
+          MOD_NAME=$(jq -r '.name' all-music-everywhere/info.json)
+          MOD_VERSION=$(jq -r '.version' all-music-everywhere/info.json)
+          ZIP_NAME="${MOD_NAME}_${MOD_VERSION}.zip"
+          echo "name=${MOD_NAME}" >> $GITHUB_OUTPUT
+          echo "version=${MOD_VERSION}" >> $GITHUB_OUTPUT
+          echo "zip_name=${ZIP_NAME}" >> $GITHUB_OUTPUT
+          echo "Mod: ${MOD_NAME}, Version: ${MOD_VERSION}, Zip: ${ZIP_NAME}"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: >-
+            ${{ steps.mod_info.outputs.name }} 
+            v${{ steps.mod_info.outputs.version }}
+          draft: false
+          prerelease: false
+          files: ${{ steps.mod_info.outputs.zip_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Optional job to publish to Factorio mod portal
+  # Uncomment this job if you want to publish to Factorio mod portal automatically
+  # publish_to_factorio:
+  #   runs-on: ubuntu-latest
+  #   needs: build_and_release
+  #   # Only run this job if explicitly requested via workflow_dispatch
+  #   if: github.event_name == 'workflow_dispatch'
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+  #
+  #     - name: Setup Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.x'
+  #
+  #     - name: Install dependencies
+  #       run: pip install requests
+  #
+  #     - name: Build mod
+  #       run: bash build.sh
+  #
+  #     - name: Get mod info
+  #       id: mod_info
+  #       run: |
+  #         MOD_NAME=$(jq -r '.name' all-music-everywhere/info.json)
+  #         MOD_VERSION=$(jq -r '.version' all-music-everywhere/info.json)
+  #         ZIP_NAME="${MOD_NAME}_${MOD_VERSION}.zip"
+  #         echo "name=${MOD_NAME}" >> $GITHUB_OUTPUT
+  #         echo "version=${MOD_VERSION}" >> $GITHUB_OUTPUT
+  #         echo "zip_name=${ZIP_NAME}" >> $GITHUB_OUTPUT
+  #
+  #     - name: Publish to Factorio Mod Portal
+  #       run: python publish.py ${{ steps.mod_info.outputs.name }} ${{ steps.mod_info.outputs.zip_name }}
+  #       env:
+  #         MOD_UPLOAD_API_KEY: ${{ secrets.FACTORIO_MOD_API_KEY }}
