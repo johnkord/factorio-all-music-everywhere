@@ -1,0 +1,30 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Build mod
+        run: bash build.sh
+
+      - name: Verify mod info
+        run: |
+          MOD_NAME=$(jq -r '.name' all-music-everywhere/info.json)
+          MOD_VERSION=$(jq -r '.version' all-music-everywhere/info.json)
+          ZIP_NAME="${MOD_NAME}_${MOD_VERSION}.zip"
+          echo "Mod: ${MOD_NAME}, Version: ${MOD_VERSION}, Zip: ${ZIP_NAME}"
+          if [ ! -f "$ZIP_NAME" ]; then
+            echo "Error: Built zip file not found!"
+            exit 1
+          fi
+          echo "Build validation successful"
